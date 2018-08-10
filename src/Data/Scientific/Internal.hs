@@ -12,6 +12,17 @@ module Data.Scientific.Internal
     , scientific
     , unsafeScientificFromNormalized
     , unsafeScientificFromNonNormalized
+    , zeroScientific
+
+      -- * Operations
+    , unsafeAddScientific
+    , unsafeSubScientific
+    , mulScientific
+    , absScientific
+    , negateScientific
+    , signumScientific
+    , fromIntegralScientific
+    , unsafeToRational
 
       -- * Projections
     , coefficient
@@ -152,6 +163,9 @@ unsafeScientificFromNonNormalized 0 _ _ = Scientific 0 0
 unsafeScientificFromNonNormalized c 0 e = Scientific c e
 unsafeScientificFromNonNormalized c z e = Scientific (c `quotInteger` magnitude z) (e + z)
 
+-- | Zero, as a 'Scientific'
+zeroScientific :: Scientific
+zeroScientific = scientific 0 1
 
 ----------------------------------------------------------------------
 -- Instances
@@ -204,98 +218,105 @@ instance Ord Scientific where
 
             d = log10cx - log10cy
 
--- | /WARNING:/ '+' and '-' compute the 'Integer' magnitude: @10^e@ where @e@ is
--- the difference between the @'base10Exponent's@ of the arguments. If these
+-- | /WARNING:/ 'unsafeAddScientific' computes the 'Integer' magnitude: @10^e@ where @e@ is
+-- the sum of the @'base10Exponent's@ of the arguments. If this
 -- methods are applied to arguments which have huge exponents this could fill up
--- all space and crash your program! So don't apply these methods to scientific
--- numbers coming from untrusted sources. The other methods can be used safely.
-instance Num Scientific where
-    Scientific c1 e1 + Scientific c2 e2
-       | e1 < e2   = scientific (c1   + c2*l) e1
-       | otherwise = scientific (c1*r + c2  ) e2
-         where
-           l = magnitude (e2 - e1)
-           r = magnitude (e1 - e2)
-    {-# INLINABLE (+) #-}
+-- all space and crash your program! So don't apply this methods to scientific
+-- numbers coming from untrusted sources.
+unsafeAddScientific :: Scientific -> Scientific -> Scientific
+unsafeAddScientific (Scientific c1 e1) (Scientific c2 e2)
+    | e1 < e2 = scientific (c1 + c2 * l) e1
+    | otherwise = scientific (c1 * r + c2) e2
+  where
+    l = magnitude (e2 - e1)
+    r = magnitude (e1 - e2)
+{-# INLINABLE unsafeAddScientific #-}
 
-    Scientific c1 e1 - Scientific c2 e2
-       | e1 < e2   = scientific (c1   - c2*l) e1
-       | otherwise = scientific (c1*r - c2  ) e2
-         where
-           l = magnitude (e2 - e1)
-           r = magnitude (e1 - e2)
-    {-# INLINABLE (-) #-}
+-- | /WARNING:/ 'unsafeSubScientific' computes the 'Integer' magnitude: @10^e@ where @e@ is
+-- the difference between the @'base10Exponent's@ of the arguments. If this
+-- methods are applied to arguments which have huge exponents this could fill up
+-- all space and crash your program! So don't apply this methods to scientific
+-- numbers coming from untrusted sources.
+unsafeSubScientific :: Scientific -> Scientific -> Scientific
+unsafeSubScientific (Scientific c1 e1) (Scientific c2 e2)
+    | e1 < e2   = scientific (c1   - c2*l) e1
+    | otherwise = scientific (c1*r - c2  ) e2
+  where
+    l = magnitude (e2 - e1)
+    r = magnitude (e1 - e2)
+{-# INLINABLE unsafeSubScientific #-}
 
-    Scientific c1 e1 * Scientific c2 e2 =
-        scientific (c1 * c2) (e1 + e2)
-    {-# INLINABLE (*) #-}
+mulScientific :: Scientific -> Scientific -> Scientific
+mulScientific (Scientific c1 e1) (Scientific c2 e2) = scientific (c1 * c2) (e1 + e2)
+{-# INLINABLE mulScientific #-}
 
-    abs (Scientific c e) = Scientific (abs c) e
-    {-# INLINABLE abs #-}
+absScientific :: Scientific -> Scientific
+absScientific (Scientific c e) = Scientific (abs c) e
+{-# INLINABLE absScientific #-}
 
-    negate (Scientific c e) = Scientific (negate c) e
-    {-# INLINABLE negate #-}
+negateScientific :: Scientific -> Scientific
+negateScientific (Scientific c e) = Scientific (negate c) e
+{-# INLINABLE negateScientific #-}
 
-    signum (Scientific c _) = Scientific (signum c) 0
-    {-# INLINABLE signum #-}
+signumScientific :: Scientific -> Scientific
+signumScientific (Scientific c _) = Scientific (signum c) 0
+{-# INLINABLE signumScientific #-}
 
-    fromInteger i = scientific i 0
-    {-# INLINABLE fromInteger #-}
+fromIntegerScientific :: Integer -> Scientific
+fromIntegerScientific i = scientific i 0
+{-# INLINABLE fromIntegerScientific #-}
 
--- | /WARNING:/ 'toRational' needs to compute the 'Integer' magnitude:
+-- | /WARNING:/ 'unsafeToRational' needs to compute the 'Integer' magnitude:
 -- @10^e@. If applied to a huge exponent this could fill up all space
 -- and crash your program!
---
--- Avoid applying 'toRational' (or 'realToFrac') to scientific numbers
--- coming from an untrusted source and use 'toRealFloat' instead. The
--- latter guards against excessive space usage.
-instance Real Scientific where
-    toRational (Scientific c e)
-      | e < 0     =  c % magnitude (-e)
-      | otherwise = (c * magnitude   e) % 1
-    {-# INLINABLE toRational #-}
+unsafeToRational :: Scientific -> Rational
+unsafeToRational (Scientific c e)
+  | e < 0     =  c % magnitude (-e)
+  | otherwise = (c * magnitude   e) % 1
+{-# INLINABLE unsafeToRational #-}
 
-{-# RULES
-  "realToFrac_toRealFloat_Double"
-   realToFrac = toRealFloat :: Scientific -> Double #-}
-
-{-# RULES
-  "realToFrac_toRealFloat_Float"
-   realToFrac = toRealFloat :: Scientific -> Float #-}
-
--- | /WARNING:/ 'recip' and '/' will throw an error when their outputs are
+-- | /WARNING:/ 'unsafeRecip' will throw an error when their outputs are
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
--- These methods also compute 'Integer' magnitudes (@10^e@). If these methods
--- are applied to arguments which have huge exponents this could fill up all
--- space and crash your program! So don't apply these methods to scientific
+-- This method also computes an 'Integer' magnitude (@10^e@). If this method
+-- is applied to an argument which has a huge exponent, this could fill up all
+-- space and crash your program! So don't apply this method to scientific
 -- numbers coming from untrusted sources.
+unsafeRecip :: Scientific -> Scientific
+unsafeRecip = differentlyUnsafeFromRational . recip . unsafeToRational
+
+-- | /WARNING:/ 'unsafeDivScientific' will throw an error when their outputs are
+-- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
--- 'fromRational' will throw an error when the input 'Rational' is a repeating
--- decimal.  Consider using 'fromRationalRepetend' for these rationals which
+-- This method also computes 'Integer' magnitudes (@10^e@). If this method
+-- is applied to arguments which have a huge exponents, this could fill up all
+-- space and crash your program! So don't apply this method to scientific
+-- numbers coming from untrusted sources.
+unsafeDivScientific :: Scientific -> Scientific -> Scientific
+unsafeDivScientific (Scientific c1 e1) (Scientific c2 e2)
+    | d < 0     = differentlyUnsafeFromRational (x / (fromInteger (magnitude (-d))))
+    | otherwise = differentlyUnsafeFromRational (x *  fromInteger (magnitude   d))
+  where
+    d = e1 - e2
+    x = c1 % c2
+
+-- | /WARNING:/ 'differentlyUnsafeFromRational' will throw an error when the input 'Rational'
+-- is a repeating decimal.
+-- Consider using 'fromRationalRepetend' for these rationals which
 -- will detect the repetition and indicate where it starts.
-instance Fractional Scientific where
-    recip = fromRational . recip . toRational
+differentlyUnsafeFromRational :: Rational -> Scientific
+differentlyUnsafeFromRational rational =
+  case mbRepetendIx of
+    Nothing -> s
+    Just _ix -> error $
+      "differentlyUnsafeFromRational has been applied to a repeating decimal " ++
+      "which can't be represented as a Scientific! " ++
+      "It's better to avoid performing fractional operations on Scientifics " ++
+      "and convert them to other fractional types like Double as early as possible."
+  where
+    (s, mbRepetendIx) = fromRationalRepetendUnlimited rational
 
-    Scientific c1 e1 / Scientific c2 e2
-        | d < 0     = fromRational (x / (fromInteger (magnitude (-d))))
-        | otherwise = fromRational (x *  fromInteger (magnitude   d))
-      where
-        d = e1 - e2
-        x = c1 % c2
-
-    fromRational rational =
-        case mbRepetendIx of
-          Nothing -> s
-          Just _ix -> error $
-            "fromRational has been applied to a repeating decimal " ++
-            "which can't be represented as a Scientific! " ++
-            "It's better to avoid performing fractional operations on Scientifics " ++
-            "and convert them to other fractional types like Double as early as possible."
-      where
-        (s, mbRepetendIx) = fromRationalRepetendUnlimited rational
-
--- | Although 'fromRational' is unsafe because it will throw errors on
+-- | Although 'differentlyUnsafeFromRational' is unsafe because it will throw errors on
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>,
 -- @unsafeFromRational@ is even more unsafe because it will diverge instead (i.e
 -- loop and consume all space). Though it will be more efficient because it
@@ -320,7 +341,8 @@ unsafeFromRational rational
 
     d = denominator rational
 
--- | Like 'fromRational' and 'unsafeFromRational', this function converts a
+-- | Like 'differentlyUnsafeFromRational' and 'unsafeFromRational',
+-- this function converts a
 -- `Rational` to a `Scientific` but instead of failing or diverging (i.e loop
 -- and consume all space) on
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>
@@ -474,11 +496,11 @@ fromRationalRepetendUnlimited rational
 --   nines = m - 1
 -- @
 -- Also see: 'fromRationalRepetend'.
-toRationalRepetend
+unsafeToRationalRepetend
     :: Scientific
     -> Int -- ^ Repetend index
     -> Rational
-toRationalRepetend s r
+unsafeToRationalRepetend s r
     | r < 0  = error "toRationalRepetend: Negative repetend index!"
     | r >= f = error "toRationalRepetend: Repetend index >= than number of digits in the fractional part!"
     | otherwise = (fromInteger nonRepetend + repetend % nines) /
@@ -499,71 +521,91 @@ toRationalRepetend s r
 
     nines = m - 1
 
--- | /WARNING:/ the methods of the @RealFrac@ instance need to compute the
+-- | The function 'properFraction' takes a Scientific number @s@
+-- and returns a pair @(n,f)@ such that @s = n+f@, and:
+--
+-- * @n@ is an integral number with the same sign as @s@; and
+--
+-- * @f@ is a fraction with the same type and sign as @s@,
+--   and with absolute value less than @1@.
+--
+-- /WARNING:/ 'unsafeProperFraction' needs to compute the
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-instance RealFrac Scientific where
-    -- | The function 'properFraction' takes a Scientific number @s@
-    -- and returns a pair @(n,f)@ such that @s = n+f@, and:
-    --
-    -- * @n@ is an integral number with the same sign as @s@; and
-    --
-    -- * @f@ is a fraction with the same type and sign as @s@,
-    --   and with absolute value less than @1@.
-    properFraction s@(Scientific c e)
-        | e < 0     = if dangerouslySmall c e
-                      then (0, s)
-                      else case c `quotRemInteger` magnitude (-e) of
-                             (#q, r#) -> (fromInteger q, Scientific r e)
-        | otherwise = (toIntegral c e, 0)
-    {-# INLINABLE properFraction #-}
+unsafeProperFraction s@(Scientific c e)
+    | e < 0     = if dangerouslySmall c e
+                  then (0, s)
+                  else case c `quotRemInteger` magnitude (-e) of
+                         (#q, r#) -> (fromInteger q, Scientific r e)
+    | otherwise = (toIntegral c e, zeroScientific)
+{-# INLINABLE unsafeProperFraction #-}
 
-    -- | @'truncate' s@ returns the integer nearest @s@
-    -- between zero and @s@
-    truncate = whenFloating $ \c e ->
-                 if dangerouslySmall c e
+-- | @'unsafeTruncate' s@ returns the integer nearest @s@
+-- between zero and @s@
+--
+-- /WARNING:/ 'unsafeTruncate' needs to compute the
+-- magnitude @10^e@. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program!
+unsafeTruncate = whenFloating $ \c e ->
+             if dangerouslySmall c e
+             then 0
+             else fromInteger $ c `quotInteger` magnitude (-e)
+{-# INLINABLE unsafeTruncate #-}
+
+-- | @'unsafeRound' s@ returns the nearest integer to @s@;
+--   the even integer if @s@ is equidistant between two integers
+--
+-- /WARNING:/ 'unsafeRound' needs to compute the
+-- magnitude @10^e@. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program!
+unsafeRound = whenFloating $ \c e ->
+          if dangerouslySmall c e
+          then 0
+          else let (#q, r#) = c `quotRemInteger` magnitude (-e)
+                   n = fromInteger q
+                   m | r < 0     = n - 1
+                     | otherwise = n + 1
+                   f = Scientific r e
+               in case signum $ coefficient $ absScientific f `unsafeSubScientific` (scientific 5 (-1)) of
+                    -1 -> n
+                    0  -> if even n then n else m
+                    1  -> m
+                    _  -> error "round default defn: Bad value"
+{-# INLINABLE unsafeRound #-}
+
+
+-- | @'ceiling' s@ returns the least integer not less than @s@
+--
+-- /WARNING:/ 'unsafeCeiling' needs to compute the
+-- magnitude @10^e@. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program!
+unsafeCeiling = whenFloating $ \c e ->
+            if dangerouslySmall c e
+            then if c <= 0
                  then 0
-                 else fromInteger $ c `quotInteger` magnitude (-e)
-    {-# INLINABLE truncate #-}
+                 else 1
+            else case c `quotRemInteger` magnitude (-e) of
+                   (#q, r#) | r <= 0    -> fromInteger q
+                            | otherwise -> fromInteger (q + 1)
+{-# INLINABLE unsafeCeiling #-}
 
-    -- | @'round' s@ returns the nearest integer to @s@;
-    --   the even integer if @s@ is equidistant between two integers
-    round = whenFloating $ \c e ->
-              if dangerouslySmall c e
-              then 0
-              else let (#q, r#) = c `quotRemInteger` magnitude (-e)
-                       n = fromInteger q
-                       m | r < 0     = n - 1
-                         | otherwise = n + 1
-                       f = Scientific r e
-                   in case signum $ coefficient $ abs f - 0.5 of
-                        -1 -> n
-                        0  -> if even n then n else m
-                        1  -> m
-                        _  -> error "round default defn: Bad value"
-    {-# INLINABLE round #-}
-
-    -- | @'ceiling' s@ returns the least integer not less than @s@
-    ceiling = whenFloating $ \c e ->
-                if dangerouslySmall c e
-                then if c <= 0
-                     then 0
-                     else 1
-                else case c `quotRemInteger` magnitude (-e) of
-                       (#q, r#) | r <= 0    -> fromInteger q
-                                | otherwise -> fromInteger (q + 1)
-    {-# INLINABLE ceiling #-}
-
-    -- | @'floor' s@ returns the greatest integer not greater than @s@
-    floor = whenFloating $ \c e ->
-              if dangerouslySmall c e
-              then if c < 0
-                   then -1
-                   else 0
-              else fromInteger (c `divInteger` magnitude (-e))
-    {-# INLINABLE floor #-}
-
+-- | @'unsafeFloor' s@ returns the greatest integer not greater than @s@
+--
+-- /WARNING:/ 'unsafeFloor' needs to compute the
+-- magnitude @10^e@. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program!
+unsafeFloor = whenFloating $ \c e ->
+          if dangerouslySmall c e
+          then if c < 0
+               then -1
+               else 0
+          else fromInteger (c `divInteger` magnitude (-e))
+{-# INLINABLE unsafeFloor #-}
 
 ----------------------------------------------------------------------
 -- Internal utilities
@@ -690,7 +732,7 @@ magnitude e | e < maxExpt = cachedPow10 e
 -- algorithm doesn't know in which direction the short decimal representation
 -- would be rounded and computes more digits
 fromFloatDigits :: (RealFloat a) => a -> Scientific
-fromFloatDigits 0  = 0
+fromFloatDigits 0  = zeroScientific
 fromFloatDigits rf = positivize fromPositiveRealFloat rf
     where
       fromPositiveRealFloat r = go digits 0 0
@@ -739,7 +781,7 @@ toBoundedRealFloat s@(Scientific c e)
                    else Right $ fromRational ((c * magnitude e) % 1)
     | e < -limit = if e < loLimit && e + d < loLimit then Left $ sign 0
                    else Right $ fromRational (c % magnitude (-e))
-    | otherwise = Right $ fromRational (toRational s)
+    | otherwise = Right $ fromRational (unsafeToRational s)
                        -- We can't use realToFrac here
                        -- because that will cause an infinite loop
                        -- when the function is specialized for Double and Float
@@ -953,7 +995,7 @@ isE c = c == 'e' || c == 'E'
 
 -- | See 'formatScientific' if you need more control over the rendering.
 instance Show Scientific where
-    show s | coefficient s < 0 = '-':showPositive (-s)
+    show s | coefficient s < 0 = '-':showPositive (negateScientific s)
            | otherwise         =     showPositive   s
       where
         showPositive :: Scientific -> String
@@ -998,8 +1040,8 @@ formatScientific :: FPFormat
                  -> Scientific
                  -> String
 formatScientific format mbDecs s
-    | coefficient s < 0 = '-':formatPositiveScientific (-s)
-    | otherwise         =     formatPositiveScientific   s
+    | coefficient s < 0 = '-':formatPositiveScientific (negateScientific s)
+    | otherwise         =     formatPositiveScientific                   s
   where
     formatPositiveScientific :: Scientific -> String
     formatPositiveScientific s' = case format of
@@ -1091,8 +1133,8 @@ toDecimalDigits (Scientific c e) = go c 0 []
 -- 'coefficient' and incrementing the 'base10Exponent' each time.
 normalize :: Scientific -> Scientific
 normalize (Scientific c e)
-    | c > 0 =   normalizePositive   c  e
-    | c < 0 = -(normalizePositive (-c) e)
+    | c > 0 =                   normalizePositive   c  e
+    | c < 0 = negateScientific (normalizePositive (-c) e)
     | otherwise {- c == 0 -} = Scientific 0 0
 
 normalizePositive :: Integer -> Int -> Scientific

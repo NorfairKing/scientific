@@ -15,11 +15,6 @@
 -- aren't truly arbitrary precision. I intend to change the type of the exponent
 -- to 'Integer' in a future release.
 --
--- /WARNING:/ Although @Scientific@ has instances for all numeric classes the
--- methods should be used with caution when applied to scientific numbers coming
--- from untrusted sources. See the warnings of the instances belonging to
--- 'Scientific'.
---
 -- The main application of 'Scientific' is to be used as the target of parsing
 -- arbitrary precision numbers coming from an untrusted source. The advantages
 -- over using 'Rational' for this are that:
@@ -47,6 +42,14 @@ module Data.Scientific
 
       -- * Construction
     , scientific
+    , zeroScientific
+
+    -- * Operations
+    , mulScientific
+    , absScientific
+    , negateScientific
+    , signumScientific
+    , fromIntegralScientific
 
       -- * Projections
     , coefficient
