@@ -32,6 +32,10 @@ module Data.Scientific.Internal
     , unsafeCeiling
     , unsafeFloor
 
+    , fromIntegralScientific
+    , unsafeRealToScientific
+    , unsafeScientificToFrac
+
       -- * Projections
     , coefficient
     , base10Exponent
@@ -558,7 +562,7 @@ unsafeProperFraction s@(Scientific c e)
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-unsafeTruncate :: Scientific -> Integer
+unsafeTruncate :: Integral a => Scientific -> a
 unsafeTruncate = whenFloating $ \c e ->
              if dangerouslySmall c e
              then 0
@@ -572,7 +576,7 @@ unsafeTruncate = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-unsafeRound :: Scientific -> Integer
+unsafeRound :: Integral a => Scientific -> a
 unsafeRound = whenFloating $ \c e ->
           if dangerouslySmall c e
           then 0
@@ -595,7 +599,7 @@ unsafeRound = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-unsafeCeiling :: Scientific -> Integer
+unsafeCeiling :: Integral a => Scientific -> a
 unsafeCeiling = whenFloating $ \c e ->
             if dangerouslySmall c e
             then if c <= 0
@@ -612,7 +616,7 @@ unsafeCeiling = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-unsafeFloor :: Scientific -> Integer
+unsafeFloor :: Integral a => Scientific -> a
 unsafeFloor = whenFloating $ \c e ->
           if dangerouslySmall c e
           then if c < 0
@@ -620,6 +624,16 @@ unsafeFloor = whenFloating $ \c e ->
                else 0
           else fromInteger (c `divInteger` magnitude (-e))
 {-# INLINABLE unsafeFloor #-}
+
+fromIntegralScientific :: Integral a => a -> Scientific
+fromIntegralScientific = fromIntegerScientific . toInteger
+
+unsafeRealToScientific :: Real a => a -> Scientific
+unsafeRealToScientific = unsafeFromRational . toRational
+
+unsafeScientificToFrac :: Fractional b => Scientific -> b
+unsafeScientificToFrac = fromRational . unsafeToRational
+
 
 ----------------------------------------------------------------------
 -- Internal utilities

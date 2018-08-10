@@ -13,6 +13,8 @@ module Data.Scientific.Unsafe
     , unsafeRound
     , unsafeCeiling
     , unsafeFloor
+    , unsafeRealToScientific
+    , unsafeScientificToFrac
     , differentlyUnsafeFromRational
     , unsafeFromRational
     , unsafeToRationalRepetend

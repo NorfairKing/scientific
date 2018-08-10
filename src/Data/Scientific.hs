@@ -50,6 +50,9 @@ module Data.Scientific
     , negateScientific
     , signumScientific
 
+    , fromIntegerScientific
+    , fromIntegralScientific
+
       -- * Projections
     , coefficient
     , base10Exponent
