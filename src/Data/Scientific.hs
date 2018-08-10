@@ -49,7 +49,6 @@ module Data.Scientific
     , absScientific
     , negateScientific
     , signumScientific
-    , fromIntegralScientific
 
       -- * Projections
     , coefficient
@@ -61,11 +60,9 @@ module Data.Scientific
 
       -- * Conversions
       -- ** Rational
-    , unsafeFromRational
     , fromRationalRepetend
     , fromRationalRepetendLimited
     , fromRationalRepetendUnlimited
-    , toRationalRepetend
 
       -- ** Floating & integer
     , floatingOrInteger

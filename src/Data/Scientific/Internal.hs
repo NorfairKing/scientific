@@ -21,8 +21,16 @@ module Data.Scientific.Internal
     , absScientific
     , negateScientific
     , signumScientific
-    , fromIntegralScientific
+    , fromIntegerScientific
     , unsafeToRational
+
+    , unsafeTruncate
+    , unsafeProperFraction
+    , unsafeDivScientific
+    , unsafeRecip
+    , unsafeRound
+    , unsafeCeiling
+    , unsafeFloor
 
       -- * Projections
     , coefficient
@@ -34,11 +42,12 @@ module Data.Scientific.Internal
 
       -- * Conversions
       -- ** Rational
+    , differentlyUnsafeFromRational
     , unsafeFromRational
     , fromRationalRepetend
     , fromRationalRepetendLimited
     , fromRationalRepetendUnlimited
-    , toRationalRepetend
+    , unsafeToRationalRepetend
 
       -- ** Floating & integer
     , floatingOrInteger
@@ -400,8 +409,8 @@ fromRationalRepetendLimited
 fromRationalRepetendLimited l rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
-                        Left  (s, r)  -> Left  (-s, -r)
-                        Right (s, mb) -> Right (-s, mb)
+                        Left  (s, r)  -> Left  (negateScientific s, -r)
+                        Right (s, mb) -> Right (negateScientific s, mb)
         | otherwise = longDiv num
       where
         num = numerator rational
@@ -431,7 +440,7 @@ fromRationalRepetendUnlimited :: Rational -> (Scientific, Maybe Int)
 fromRationalRepetendUnlimited rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
-                        (s, mb) -> (-s, mb)
+                        (s, mb) -> (negateScientific s, mb)
         | otherwise = longDiv num
       where
         num = numerator rational
@@ -501,8 +510,8 @@ unsafeToRationalRepetend
     -> Int -- ^ Repetend index
     -> Rational
 unsafeToRationalRepetend s r
-    | r < 0  = error "toRationalRepetend: Negative repetend index!"
-    | r >= f = error "toRationalRepetend: Repetend index >= than number of digits in the fractional part!"
+    | r < 0  = error "unsafeToRationalRepetend: Negative repetend index!"
+    | r >= f = error "unsafeToRationalRepetend: Repetend index >= than number of digits in the fractional part!"
     | otherwise = (fromInteger nonRepetend + repetend % nines) /
                   fromInteger (magnitude r)
   where
@@ -533,6 +542,7 @@ unsafeToRationalRepetend s r
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
+unsafeProperFraction :: Num a => Scientific -> (a, Scientific)
 unsafeProperFraction s@(Scientific c e)
     | e < 0     = if dangerouslySmall c e
                   then (0, s)
@@ -548,6 +558,7 @@ unsafeProperFraction s@(Scientific c e)
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
+unsafeTruncate :: Scientific -> Integer
 unsafeTruncate = whenFloating $ \c e ->
              if dangerouslySmall c e
              then 0
@@ -561,6 +572,7 @@ unsafeTruncate = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
+unsafeRound :: Scientific -> Integer
 unsafeRound = whenFloating $ \c e ->
           if dangerouslySmall c e
           then 0
@@ -583,6 +595,7 @@ unsafeRound = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
+unsafeCeiling :: Scientific -> Integer
 unsafeCeiling = whenFloating $ \c e ->
             if dangerouslySmall c e
             then if c <= 0
@@ -599,6 +612,7 @@ unsafeCeiling = whenFloating $ \c e ->
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
+unsafeFloor :: Scientific -> Integer
 unsafeFloor = whenFloating $ \c e ->
           if dangerouslySmall c e
           then if c < 0
@@ -654,9 +668,9 @@ dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
 limit :: Int
 limit = maxExpt
 
-positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
-positivize f x | x < 0     = -(f (-x))
-               | otherwise =   f   x
+positivize :: (Ord a, Num a) => (a -> Scientific) -> (a -> Scientific)
+positivize f x | x < 0     = negateScientific (f (-x))
+               | otherwise =                   f   x
 {-# INLINE positivize #-}
 
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
@@ -735,6 +749,7 @@ fromFloatDigits :: (RealFloat a) => a -> Scientific
 fromFloatDigits 0  = zeroScientific
 fromFloatDigits rf = positivize fromPositiveRealFloat rf
     where
+      fromPositiveRealFloat :: RealFloat a => a -> Scientific
       fromPositiveRealFloat r = go digits 0 0
         where
           (digits, e) = Numeric.floatToDigits 10 r

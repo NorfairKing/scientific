@@ -4,18 +4,18 @@ module Data.Scientific.Unsafe
     ( unsafeScientificFromNormalized
     , unsafeScientificFromNonNormalized
     , unsafeAddScientific
-    , unsafeSubcientific
+    , unsafeSubScientific
     , unsafeToRational
-    , unsafeRecip
-    , unsafeDivScientific
-    , differentlyUnsafeFromRational
-    , unsafeFromRational
-    , unsafeToRationalRepetend
-    , unsafeProperFraction
     , unsafeTruncate
+    , unsafeProperFraction
+    , unsafeDivScientific
+    , unsafeRecip
     , unsafeRound
     , unsafeCeiling
     , unsafeFloor
+    , differentlyUnsafeFromRational
+    , unsafeFromRational
+    , unsafeToRationalRepetend
     ) where
 
 import Data.Scientific.Internal

@@ -38,8 +38,8 @@ formatScientificBuilder :: FPFormat
                         -> Scientific
                         -> Builder
 formatScientificBuilder fmt decs scntfc
-   | scntfc < 0 = singleton '-' <> doFmt fmt (Scientific.toDecimalDigits (-scntfc))
-   | otherwise  =                  doFmt fmt (Scientific.toDecimalDigits   scntfc)
+   | scntfc < Scientific.zeroScientific = singleton '-' <> doFmt fmt (Scientific.toDecimalDigits ( Scientific.negateScientific scntfc))
+   | otherwise                          =                  doFmt fmt (Scientific.toDecimalDigits                               scntfc)
  where
   doFmt format (is, e) =
     let ds = map i2d is in
