@@ -27,7 +27,7 @@ import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
 import qualified Test.QuickCheck                    as QC
 import qualified Test.Tasty.QuickCheck              as QC  (testProperty)
--- import qualified Data.Binary                        as Binary (encode, decode)
+import qualified Data.Binary                        as Binary (encode, decode)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
 import qualified Data.Text.Lazy.Builder.Scientific  as T
@@ -93,10 +93,10 @@ main = testMain $ testGroup "scientific"
        (\s -> s /= zeroScientific SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
        (\s -> s /= zeroScientific QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
---   , testGroup "Binary"
---     [ testProperty "decode . encode == id" $ \s ->
---         Binary.decode (Binary.encode s) === s
---     ]
+  , testGroup "Binary"
+    [ testProperty "decode . encode == id" $ \s ->
+        Binary.decode (Binary.encode s) === s
+    ]
 
   , testGroup "Parsing"
     [ testCase "reads \"\""        $ testReads ""        []
