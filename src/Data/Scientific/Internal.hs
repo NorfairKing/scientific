@@ -10,29 +10,29 @@ module Data.Scientific.Internal
 
       -- * Construction
     , scientific
-    , unsafeScientificFromNormalized
-    , unsafeScientificFromNonNormalized
-    , zeroScientific
+    , unsafeFromNormalized
+    , unsafeFromNonNormalized
+    , zero
 
       -- * Operations
-    , unsafeAddScientific
-    , unsafeSubScientific
-    , mulScientific
-    , absScientific
-    , negateScientific
-    , signumScientific
-    , fromIntegerScientific
+    , unsafeAdd
+    , unsafeSub
+    , mul
+    , abs
+    , negate
+    , signum
+    , fromInteger
     , unsafeToRational
 
     , unsafeTruncate
     , unsafeProperFraction
-    , unsafeDivScientific
+    , unsafeDiv
     , unsafeRecip
     , unsafeRound
     , unsafeCeiling
     , unsafeFloor
 
-    , fromIntegralScientific
+    , fromIntegral
     , unsafeRealToScientific
     , unsafeScientificToFrac
 
@@ -65,7 +65,7 @@ module Data.Scientific.Internal
     , scientificP
 
       -- * Pretty printing
-    , formatScientific
+    , format
     , FPFormat(..)
 
     , toDecimalDigits
@@ -79,6 +79,9 @@ module Data.Scientific.Internal
 -- Imports
 ----------------------------------------------------------------------
 
+import           Prelude                     hiding (Num(..), Integral(..),fromIntegral)
+import           Prelude                     (Num((+), (-), (*)),Integral(toInteger))
+import qualified Prelude                     as Num (abs, signum, fromInteger, negate, fromIntegral)
 import           Control.Exception            (throw, ArithException(DivideByZero))
 import           Control.Monad                (mplus)
 import           Control.Monad.ST             (runST)
@@ -152,11 +155,11 @@ scientific c e = normalize (Scientific c e)
 
 -- | Unsafe but efficient way to construct a 'Scientific' from an
 -- already normalized 'coefficient', i.e. it has no trailing 0s.
-unsafeScientificFromNormalized
+unsafeFromNormalized
     :: Integer -- ^ coefficient which should be normalized
     -> Int     -- ^ base-10 exponent
     -> Scientific
-unsafeScientificFromNormalized = Scientific
+unsafeFromNormalized = Scientific
 
 -- | Unsafe but efficient way to construct a 'Scientific' from a
 -- 'coefficient' which does not have to be normalized (i.e. it may
@@ -167,18 +170,18 @@ unsafeScientificFromNormalized = Scientific
 -- can count the number of trailing 0s and supply that to this
 -- function. This will be more efficient than calling 'scientific'
 -- because no expensive normalization has to be performed.
-unsafeScientificFromNonNormalized
+unsafeFromNonNormalized
     :: Integer -- ^ coefficient
     -> Int     -- ^ number of trailing 0s in the coefficient. This should be positive!
     -> Int     -- ^ base-10 exponent
     -> Scientific
-unsafeScientificFromNonNormalized 0 _ _ = Scientific 0 0
-unsafeScientificFromNonNormalized c 0 e = Scientific c e
-unsafeScientificFromNonNormalized c z e = Scientific (c `quotInteger` magnitude z) (e + z)
+unsafeFromNonNormalized 0 _ _ = Scientific 0 0
+unsafeFromNonNormalized c 0 e = Scientific c e
+unsafeFromNonNormalized c z e = Scientific (c `quotInteger` magnitude z) (e + z)
 
 -- | Zero, as a 'Scientific'
-zeroScientific :: Scientific
-zeroScientific = scientific 0 1
+zero :: Scientific
+zero = scientific 0 1
 
 ----------------------------------------------------------------------
 -- Instances
@@ -198,7 +201,7 @@ instance Hashable Scientific where
 -- already encodes the exponent as 'Integer'.
 instance Binary Scientific where
     put (Scientific c e) = put c *> put (toInteger e)
-    get = Scientific <$> get <*> (fromInteger <$> get)
+    get = Scientific <$> get <*> (Num.fromInteger <$> get)
 
 -- | Scientific numbers can be safely compared for equality. No magnitude @10^e@
 -- is calculated so there's no risk of a blowup in space or time when comparing
@@ -231,53 +234,53 @@ instance Ord Scientific where
 
             d = log10cx - log10cy
 
--- | /WARNING:/ 'unsafeAddScientific' computes the 'Integer' magnitude: @10^e@ where @e@ is
+-- | /WARNING:/ 'unsafeAdd' computes the 'Integer' magnitude: @10^e@ where @e@ is
 -- the sum of the @'base10Exponent's@ of the arguments. If this
 -- methods are applied to arguments which have huge exponents this could fill up
 -- all space and crash your program! So don't apply this methods to scientific
 -- numbers coming from untrusted sources.
-unsafeAddScientific :: Scientific -> Scientific -> Scientific
-unsafeAddScientific (Scientific c1 e1) (Scientific c2 e2)
+unsafeAdd :: Scientific -> Scientific -> Scientific
+unsafeAdd (Scientific c1 e1) (Scientific c2 e2)
     | e1 < e2 = scientific (c1 + c2 * l) e1
     | otherwise = scientific (c1 * r + c2) e2
   where
     l = magnitude (e2 - e1)
     r = magnitude (e1 - e2)
-{-# INLINABLE unsafeAddScientific #-}
+{-# INLINABLE unsafeAdd #-}
 
--- | /WARNING:/ 'unsafeSubScientific' computes the 'Integer' magnitude: @10^e@ where @e@ is
+-- | /WARNING:/ 'unsafeSub' computes the 'Integer' magnitude: @10^e@ where @e@ is
 -- the difference between the @'base10Exponent's@ of the arguments. If this
 -- methods are applied to arguments which have huge exponents this could fill up
 -- all space and crash your program! So don't apply this methods to scientific
 -- numbers coming from untrusted sources.
-unsafeSubScientific :: Scientific -> Scientific -> Scientific
-unsafeSubScientific (Scientific c1 e1) (Scientific c2 e2)
+unsafeSub :: Scientific -> Scientific -> Scientific
+unsafeSub (Scientific c1 e1) (Scientific c2 e2)
     | e1 < e2   = scientific (c1   - c2*l) e1
     | otherwise = scientific (c1*r - c2  ) e2
   where
     l = magnitude (e2 - e1)
     r = magnitude (e1 - e2)
-{-# INLINABLE unsafeSubScientific #-}
+{-# INLINABLE unsafeSub #-}
 
-mulScientific :: Scientific -> Scientific -> Scientific
-mulScientific (Scientific c1 e1) (Scientific c2 e2) = scientific (c1 * c2) (e1 + e2)
-{-# INLINABLE mulScientific #-}
+mul :: Scientific -> Scientific -> Scientific
+mul (Scientific c1 e1) (Scientific c2 e2) = scientific (c1 * c2) (e1 + e2)
+{-# INLINABLE mul #-}
 
-absScientific :: Scientific -> Scientific
-absScientific (Scientific c e) = Scientific (abs c) e
-{-# INLINABLE absScientific #-}
+abs :: Scientific -> Scientific
+abs (Scientific c e) = Scientific (Num.abs c) e
+{-# INLINABLE abs #-}
 
-negateScientific :: Scientific -> Scientific
-negateScientific (Scientific c e) = Scientific (negate c) e
-{-# INLINABLE negateScientific #-}
+negate :: Scientific -> Scientific
+negate (Scientific c e) = Scientific (Num.negate c) e
+{-# INLINABLE negate #-}
 
-signumScientific :: Scientific -> Scientific
-signumScientific (Scientific c _) = Scientific (signum c) 0
-{-# INLINABLE signumScientific #-}
+signum :: Scientific -> Scientific
+signum (Scientific c _) = Scientific (Num.signum c) 0
+{-# INLINABLE signum #-}
 
-fromIntegerScientific :: Integer -> Scientific
-fromIntegerScientific i = scientific i 0
-{-# INLINABLE fromIntegerScientific #-}
+fromInteger :: Integer -> Scientific
+fromInteger i = scientific i 0
+{-# INLINABLE fromInteger #-}
 
 -- | /WARNING:/ 'unsafeToRational' needs to compute the 'Integer' magnitude:
 -- @10^e@. If applied to a huge exponent this could fill up all space
@@ -298,17 +301,17 @@ unsafeToRational (Scientific c e)
 unsafeRecip :: Scientific -> Scientific
 unsafeRecip = differentlyUnsafeFromRational . recip . unsafeToRational
 
--- | /WARNING:/ 'unsafeDivScientific' will throw an error when their outputs are
+-- | /WARNING:/ 'unsafeDiv' will throw an error when their outputs are
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
 -- This method also computes 'Integer' magnitudes (@10^e@). If this method
 -- is applied to arguments which have a huge exponents, this could fill up all
 -- space and crash your program! So don't apply this method to scientific
 -- numbers coming from untrusted sources.
-unsafeDivScientific :: Scientific -> Scientific -> Scientific
-unsafeDivScientific (Scientific c1 e1) (Scientific c2 e2)
-    | d < 0     = differentlyUnsafeFromRational (x / (fromInteger (magnitude (-d))))
-    | otherwise = differentlyUnsafeFromRational (x *  fromInteger (magnitude   d))
+unsafeDiv :: Scientific -> Scientific -> Scientific
+unsafeDiv (Scientific c1 e1) (Scientific c2 e2)
+    | d < 0     = differentlyUnsafeFromRational (x / (Num.fromInteger (magnitude (-d))))
+    | otherwise = differentlyUnsafeFromRational (x *  Num.fromInteger (magnitude   d))
   where
     d = e1 - e2
     x = c1 % c2
@@ -413,8 +416,8 @@ fromRationalRepetendLimited
 fromRationalRepetendLimited l rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
-                        Left  (s, r)  -> Left  (negateScientific s, -r)
-                        Right (s, mb) -> Right (negateScientific s, mb)
+                        Left  (s, r)  -> Left  (negate s, -r)
+                        Right (s, mb) -> Right (negate s, mb)
         | otherwise = longDiv num
       where
         num = numerator rational
@@ -444,7 +447,7 @@ fromRationalRepetendUnlimited :: Rational -> (Scientific, Maybe Int)
 fromRationalRepetendUnlimited rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
-                        (s, mb) -> (negateScientific s, mb)
+                        (s, mb) -> (negate s, mb)
         | otherwise = longDiv num
       where
         num = numerator rational
@@ -516,8 +519,8 @@ unsafeToRationalRepetend
 unsafeToRationalRepetend s r
     | r < 0  = error "unsafeToRationalRepetend: Negative repetend index!"
     | r >= f = error "unsafeToRationalRepetend: Repetend index >= than number of digits in the fractional part!"
-    | otherwise = (fromInteger nonRepetend + repetend % nines) /
-                  fromInteger (magnitude r)
+    | otherwise = (Num.fromInteger nonRepetend + repetend % nines) /
+                  Num.fromInteger (magnitude r)
   where
     c  = coefficient s
     e  = base10Exponent s
@@ -551,8 +554,8 @@ unsafeProperFraction s@(Scientific c e)
     | e < 0     = if dangerouslySmall c e
                   then (0, s)
                   else case c `quotRemInteger` magnitude (-e) of
-                         (#q, r#) -> (fromInteger q, Scientific r e)
-    | otherwise = (toIntegral c e, zeroScientific)
+                         (#q, r#) -> (Num.fromInteger q, Scientific r e)
+    | otherwise = (toIntegral c e, zero)
 {-# INLINABLE unsafeProperFraction #-}
 
 -- | @'unsafeTruncate' s@ returns the integer nearest @s@
@@ -566,7 +569,7 @@ unsafeTruncate :: Integral a => Scientific -> a
 unsafeTruncate = whenFloating $ \c e ->
              if dangerouslySmall c e
              then 0
-             else fromInteger $ c `quotInteger` magnitude (-e)
+             else Num.fromInteger $ c `quotInteger` magnitude (-e)
 {-# INLINABLE unsafeTruncate #-}
 
 -- | @'unsafeRound' s@ returns the nearest integer to @s@;
@@ -581,11 +584,11 @@ unsafeRound = whenFloating $ \c e ->
           if dangerouslySmall c e
           then 0
           else let (#q, r#) = c `quotRemInteger` magnitude (-e)
-                   n = fromInteger q
+                   n = Num.fromInteger q
                    m | r < 0     = n - 1
                      | otherwise = n + 1
                    f = Scientific r e
-               in case signum $ coefficient $ absScientific f `unsafeSubScientific` (scientific 5 (-1)) of
+               in case Num.signum $ coefficient $ abs f `unsafeSub` (scientific 5 (-1)) of
                     -1 -> n
                     0  -> if even n then n else m
                     1  -> m
@@ -606,8 +609,8 @@ unsafeCeiling = whenFloating $ \c e ->
                  then 0
                  else 1
             else case c `quotRemInteger` magnitude (-e) of
-                   (#q, r#) | r <= 0    -> fromInteger q
-                            | otherwise -> fromInteger (q + 1)
+                   (#q, r#) | r <= 0    -> Num.fromInteger q
+                            | otherwise -> Num.fromInteger (q + 1)
 {-# INLINABLE unsafeCeiling #-}
 
 -- | @'unsafeFloor' s@ returns the greatest integer not greater than @s@
@@ -622,11 +625,11 @@ unsafeFloor = whenFloating $ \c e ->
           then if c < 0
                then -1
                else 0
-          else fromInteger (c `divInteger` magnitude (-e))
+          else Num.fromInteger (c `divInteger` magnitude (-e))
 {-# INLINABLE unsafeFloor #-}
 
-fromIntegralScientific :: Integral a => a -> Scientific
-fromIntegralScientific = fromIntegerScientific . toInteger
+fromIntegral :: Integral a => a -> Scientific
+fromIntegral = fromInteger . toInteger
 
 unsafeRealToScientific :: Real a => a -> Scientific
 unsafeRealToScientific = unsafeFromRational . toRational
@@ -676,14 +679,14 @@ unsafeScientificToFrac = fromRational . unsafeToRational
 -- Note that we avoid computing the number of decimal digits in c
 -- (log10 c) if the exponent is not below the limit.
 dangerouslySmall :: Integer -> Int -> Bool
-dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
+dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (Num.abs c)) - 1
 {-# INLINE dangerouslySmall #-}
 
 limit :: Int
 limit = maxExpt
 
 positivize :: (Ord a, Num a) => (a -> Scientific) -> (a -> Scientific)
-positivize f x | x < 0     = negateScientific (f (-x))
+positivize f x | x < 0     = negate (f (-x))
                | otherwise =                   f   x
 {-# INLINE positivize #-}
 
@@ -695,7 +698,7 @@ whenFloating f (Scientific c e)
 
 -- | Precondition: the scientific needs to be an integer: @e >= 0@
 toIntegral :: (Num a) => Integer -> Int -> a
-toIntegral c e = fromInteger c * magnitude e
+toIntegral c e = Num.fromInteger c * magnitude e
 {-# INLINE toIntegral #-}
 
 
@@ -736,7 +739,7 @@ magnitude :: Num a => Int -> a
 magnitude e | e < maxExpt = cachedPow10 e
             | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
-      cachedPow10 = fromInteger . Primitive.indexArray expts10
+      cachedPow10 = Num.fromInteger . Primitive.indexArray expts10
 
       hi = maxExpt - 1
 
@@ -760,7 +763,7 @@ magnitude e | e < maxExpt = cachedPow10 e
 -- algorithm doesn't know in which direction the short decimal representation
 -- would be rounded and computes more digits
 fromFloatDigits :: (RealFloat a) => a -> Scientific
-fromFloatDigits 0  = zeroScientific
+fromFloatDigits 0  = zero
 fromFloatDigits rf = positivize fromPositiveRealFloat rf
     where
       fromPositiveRealFloat :: RealFloat a => a -> Scientific
@@ -817,18 +820,18 @@ toBoundedRealFloat s@(Scientific c e)
                        -- caused by the realToFrac_toRealFloat_Double/Float rewrite RULEs.
   where
     hiLimit, loLimit :: Int
-    hiLimit = ceiling (fromIntegral hi     * log10Radix)
-    loLimit = floor   (fromIntegral lo     * log10Radix) -
-              ceiling (fromIntegral digits * log10Radix)
+    hiLimit = ceiling (Num.fromIntegral hi     * log10Radix)
+    loLimit = floor   (Num.fromIntegral lo     * log10Radix) -
+              ceiling (Num.fromIntegral digits * log10Radix)
 
     log10Radix :: Double
-    log10Radix = logBase 10 $ fromInteger radix
+    log10Radix = logBase 10 $ Num.fromInteger radix
 
     radix    = floatRadix  (undefined :: a)
     digits   = floatDigits (undefined :: a)
     (lo, hi) = floatRange  (undefined :: a)
 
-    d = integerLog10' (abs c)
+    d = integerLog10' (Num.abs c)
 
     sign x | c < 0     = -x
            | otherwise =  x
@@ -843,10 +846,10 @@ toBoundedRealFloat s@(Scientific c e)
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
 toBoundedInteger s@(Scientific c e)
     | isFloating s || dangerouslyBig || outsideBounds n = Nothing
-    | otherwise = Just $ fromInteger n
+    | otherwise = Just $ Num.fromInteger n
   where
     dangerouslyBig = e > limit &&
-                     e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
+                     e > integerLog10' (max (Num.abs iMinBound) (Num.abs iMaxBound))
 
     outsideBounds i = i < iMinBound || i > iMaxBound
 
@@ -965,8 +968,8 @@ scientificP = do
     let signedCoeff | pos       =   coeff
                     | otherwise = (-coeff)
     (ReadP.satisfy isE >>
-             ((unsafeScientificFromNonNormalized signedCoeff z . (expnt +)) <$> eP)) `mplus`
-       return (unsafeScientificFromNonNormalized signedCoeff z    expnt)
+             ((unsafeFromNonNormalized signedCoeff z . (expnt +)) <$> eP)) `mplus`
+       return (unsafeFromNonNormalized signedCoeff z    expnt)
   where
     positive :: ReadP Bool
     positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
@@ -1022,9 +1025,9 @@ isE c = c == 'e' || c == 'E'
 -- Pretty Printing
 ----------------------------------------------------------------------
 
--- | See 'formatScientific' if you need more control over the rendering.
+-- | See 'format' if you need more control over the rendering.
 instance Show Scientific where
-    show s | coefficient s < 0 = '-':showPositive (negateScientific s)
+    show s | coefficient s < 0 = '-':showPositive (negate s)
            | otherwise         =     showPositive   s
       where
         showPositive :: Scientific -> String
@@ -1041,7 +1044,7 @@ fmtAsExponent (is, e) =
       "0"     -> "0.0e0"
       [d]     -> d : '.' :'0' : 'e' : show_e'
       (d:ds') -> d : '.' : ds' ++ ('e' : show_e')
-      []      -> error "formatScientific/doFmt/FFExponent: []"
+      []      -> error "format/doFmt/FFExponent: []"
   where
     show_e' = show (e-1)
 
@@ -1064,16 +1067,16 @@ fmtAsFixed (is, e)
     ds = map intToDigit is
 
 -- | Like 'show' but provides rendering options.
-formatScientific :: FPFormat
+format :: FPFormat
                  -> Maybe Int  -- ^ Number of decimal places to render.
                  -> Scientific
                  -> String
-formatScientific format mbDecs s
-    | coefficient s < 0 = '-':formatPositiveScientific (negateScientific s)
+format format_ mbDecs s
+    | coefficient s < 0 = '-':formatPositiveScientific (negate s)
     | otherwise         =     formatPositiveScientific                   s
   where
     formatPositiveScientific :: Scientific -> String
-    formatPositiveScientific s' = case format of
+    formatPositiveScientific s' = case format_ of
         Generic  -> fmtAsGeneric        $ toDecimalDigits s'
         Exponent -> fmtAsExponentMbDecs $ toDecimalDigits s'
         Fixed    -> fmtAsFixedMbDecs    $ toDecimalDigits s'
@@ -1149,7 +1152,7 @@ toDecimalDigits (Scientific c e) = go c 0 []
     go i !n ds = case i `quotRemInteger` 10 of
                    (# q, r #) -> go q (n+1) (d:ds)
                      where
-                       !d = fromIntegral r
+                       !d = Num.fromIntegral r
 
 
 ----------------------------------------------------------------------
@@ -1163,7 +1166,7 @@ toDecimalDigits (Scientific c e) = go c 0 []
 normalize :: Scientific -> Scientific
 normalize (Scientific c e)
     | c > 0 =                   normalizePositive   c  e
-    | c < 0 = negateScientific (normalizePositive (-c) e)
+    | c < 0 = negate (normalizePositive (-c) e)
     | otherwise {- c == 0 -} = Scientific 0 0
 
 normalizePositive :: Integer -> Int -> Scientific

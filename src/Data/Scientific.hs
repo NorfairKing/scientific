@@ -37,21 +37,22 @@
 -- This module is designed to be imported qualified:
 --
 -- @import Data.Scientific as Scientific@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Data.Scientific
     ( Scientific
 
       -- * Construction
     , scientific
-    , zeroScientific
+    , zero
 
     -- * Operations
-    , mulScientific
-    , absScientific
-    , negateScientific
-    , signumScientific
+    , mul
+    , abs
+    , negate
+    , signum
 
-    , fromIntegerScientific
-    , fromIntegralScientific
+    , fromInteger
+    , fromIntegral
 
       -- * Projections
     , coefficient
@@ -79,7 +80,7 @@ module Data.Scientific
     , scientificP
 
       -- * Pretty printing
-    , formatScientific
+    , format
     , FPFormat(..)
 
     , toDecimalDigits

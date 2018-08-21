@@ -44,7 +44,7 @@ formatScientificBuilder :: FPFormat
                         -> Scientific
                         -> Builder
 formatScientificBuilder fmt decs scntfc
-   | scntfc < Scientific.zeroScientific = char8 '-' <> doFmt fmt (Scientific.toDecimalDigits (Scientific.negateScientific scntfc))
+   | scntfc < Scientific.zero = char8 '-' <> doFmt fmt (Scientific.toDecimalDigits (Scientific.negate scntfc))
    | otherwise                          =              doFmt fmt (Scientific.toDecimalDigits                              scntfc)
  where
   doFmt format (is, e) =

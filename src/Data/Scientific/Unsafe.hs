@@ -1,14 +1,14 @@
 {-# LANGUAGE Unsafe #-}
 
 module Data.Scientific.Unsafe
-    ( unsafeScientificFromNormalized
-    , unsafeScientificFromNonNormalized
-    , unsafeAddScientific
-    , unsafeSubScientific
+    ( unsafeFromNormalized
+    , unsafeFromNonNormalized
+    , unsafeAdd
+    , unsafeSub
     , unsafeToRational
     , unsafeTruncate
     , unsafeProperFraction
-    , unsafeDivScientific
+    , unsafeDiv
     , unsafeRecip
     , unsafeRound
     , unsafeCeiling

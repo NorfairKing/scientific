@@ -17,8 +17,9 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.Int
 import           Data.Word
-import           Data.Scientific                    as Scientific
-import           Data.Scientific.Unsafe             as Scientific
+import           Data.Scientific                    (Scientific, scientific)
+import qualified Data.Scientific                    as Scientific
+import qualified Data.Scientific.Unsafe             as Scientific
 import           Test.Tasty
 import           Test.Tasty.Runners.AntXML
 import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
@@ -52,46 +53,46 @@ main = testMain $ testGroup "scientific"
 
     , testGroup "RealFrac replacements"
       [ testGroup "unsafeFloor"
-        [ testCase "1e1000000"   $ (unsafeFloor (read "1e1000000"   :: Scientific) :: Int) @?= 0
-        , testCase "-1e-1000000" $ (unsafeFloor (read "-1e-1000000" :: Scientific) :: Int) @?= (-1)
-        , testCase "1e-1000000"  $ (unsafeFloor (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        [ testCase "1e1000000"   $ (Scientific.unsafeFloor (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (Scientific.unsafeFloor (read "-1e-1000000" :: Scientific) :: Int) @?= (-1)
+        , testCase "1e-1000000"  $ (Scientific.unsafeFloor (read "1e-1000000"  :: Scientific) :: Int) @?= 0
         ]
       , testGroup "unsafeCeiling"
-        [ testCase "1e1000000"   $ (unsafeCeiling (read "1e1000000"   :: Scientific) :: Int) @?= 0
-        , testCase "-1e-1000000" $ (unsafeCeiling (read "-1e-1000000" :: Scientific) :: Int) @?= 0
-        , testCase "1e-1000000"  $ (unsafeCeiling (read "1e-1000000"  :: Scientific) :: Int) @?= 1
+        [ testCase "1e1000000"   $ (Scientific.unsafeCeiling (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (Scientific.unsafeCeiling (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (Scientific.unsafeCeiling (read "1e-1000000"  :: Scientific) :: Int) @?= 1
         ]
       , testGroup "unsafeRound"
-        [ testCase "1e1000000"   $ (unsafeRound (read "1e1000000"   :: Scientific) :: Int) @?= 0
-        , testCase "-1e-1000000" $ (unsafeRound (read "-1e-1000000" :: Scientific) :: Int) @?= 0
-        , testCase "1e-1000000"  $ (unsafeRound (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        [ testCase "1e1000000"   $ (Scientific.unsafeRound (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (Scientific.unsafeRound (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (Scientific.unsafeRound (read "1e-1000000"  :: Scientific) :: Int) @?= 0
         ]
       , testGroup "unsafeTruncate"
-        [ testCase "1e1000000"   $ (unsafeTruncate (read "1e1000000"   :: Scientific) :: Int) @?= 0
-        , testCase "-1e-1000000" $ (unsafeTruncate (read "-1e-1000000" :: Scientific) :: Int) @?= 0
-        , testCase "1e-1000000"  $ (unsafeTruncate (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        [ testCase "1e1000000"   $ (Scientific.unsafeTruncate (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (Scientific.unsafeTruncate (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (Scientific.unsafeTruncate (read "1e-1000000"  :: Scientific) :: Int) @?= 0
         ]
       , testGroup "unsafeProperFracton"
-        [ testCase "1e1000000"   $ unsafeProperFraction (read "1e1000000" :: Scientific) @?= (0 :: Int, zeroScientific)
+        [ testCase "1e1000000"   $ Scientific.unsafeProperFraction (read "1e1000000" :: Scientific) @?= (0 :: Int, Scientific.zero)
         , testCase "-1e-1000000" $ let s = read "-1e-1000000" :: Scientific
-                                   in unsafeProperFraction s @?= (0 :: Int, s)
+                                   in Scientific.unsafeProperFraction s @?= (0 :: Int, s)
         , testCase "1e-1000000"  $ let s = read "1e-1000000" :: Scientific
-                                   in unsafeProperFraction s @?= (0 :: Int, s)
+                                   in Scientific.unsafeProperFraction s @?= (0 :: Int, s)
         ]
       ]
     , testGroup "toRealFloat"
       [ testCase "1e1000000"  $ assertBool "Should be infinity!" $ isInfinite $
-                                  (toRealFloat (read "1e1000000" :: Scientific) :: Double)
-      , testCase "1e-1000000" $ (toRealFloat (read "1e-1000000" :: Scientific) :: Double) @?= 0
+                                (Scientific.toRealFloat (read "1e1000000" :: Scientific) :: Double)
+      , testCase "1e-1000000" $ (Scientific.toRealFloat (read "1e-1000000" :: Scientific) :: Double) @?= 0
       ]
     , testGroup "toBoundedInteger"
-      [ testCase "1e1000000"  $ (toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
+      [ testCase "1e1000000"  $ (Scientific.toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
       ]
     ]
 
   , smallQuick "normalization"
-       (\s -> s /= zeroScientific SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
-       (\s -> s /= zeroScientific QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+       (\s -> s /= Scientific.zero SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+       (\s -> s /= Scientific.zero QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
   , testGroup "Binary"
     [ testProperty "decode . encode == id" $ \s ->
@@ -127,122 +128,122 @@ main = testMain $ testGroup "scientific"
 
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
-          formatScientific Scientific.Generic Nothing s ==
+          Scientific.format Scientific.Generic Nothing s ==
           TL.unpack (TLB.toLazyText $
                        T.formatScientificBuilder Scientific.Generic Nothing s)
 
       , testProperty "ByteString" $ \s ->
-          formatScientific Scientific.Generic Nothing s ==
+          Scientific.format Scientific.Generic Nothing s ==
           BLC8.unpack (B.toLazyByteString $
                         B.formatScientificBuilder Scientific.Generic Nothing s)
       ]
 
-    , testProperty "formatScientific_fromFloatDigits" $ \(d::Double) ->
-        formatScientific Scientific.Generic Nothing (Scientific.fromFloatDigits d) ==
+    , testProperty "format_fromFloatDigits" $ \(d::Double) ->
+        Scientific.format Scientific.Generic Nothing (Scientific.fromFloatDigits d) ==
         show d
 
-    -- , testProperty "formatScientific_realToFrac" $ \(d::Double) ->
-    --     formatScientific B.Generic Nothing (realToFrac d :: Scientific) ==
+    -- , testProperty "format_realToFrac" $ \(d::Double) ->
+    --     Scientific.format B.Generic Nothing (realToFrac d :: Scientific) ==
     --     show d
     ]
 
   , testGroup "Eq"
     [ testProperty "==" $ \(s1 :: Scientific) (s2 :: Scientific) ->
-        (s1 == s2) == (unsafeToRational s1 == unsafeToRational s2)
+        (s1 == s2) == (Scientific.unsafeToRational s1 == Scientific.unsafeToRational s2)
     , testProperty "s == s" $ \(s :: Scientific) -> s == s
     ]
 
   , testGroup "Ord"
     [ testProperty "compare" $ \(s1 :: Scientific) (s2 :: Scientific) ->
-        compare s1 s2 == compare (unsafeToRational s1) (unsafeToRational s2)
+        compare s1 s2 == compare (Scientific.unsafeToRational s1) (Scientific.unsafeToRational s2)
     ]
 
   , testGroup "Num"
     [ testGroup "Equal to Rational"
-      [ testProperty "fromInteger" $ \i -> fromIntegerScientific i === unsafeFromRational (fromInteger i)
-      , testProperty "+"           $ bin (+) unsafeAddScientific
-      , testProperty "-"           $ bin (-) unsafeSubScientific
-      , testProperty "*"           $ bin (*) mulScientific
-      , testProperty "abs"         $ unary abs absScientific
-      , testProperty "negate"      $ unary negate negateScientific
-      , testProperty "signum"      $ unary signum signumScientific
+      [ testProperty "fromInteger" $ \i -> Scientific.fromInteger i === Scientific.unsafeFromRational (fromInteger i)
+      , testProperty "+"           $ bin (+) Scientific.unsafeAdd
+      , testProperty "-"           $ bin (-) Scientific.unsafeSub
+      , testProperty "*"           $ bin (*) Scientific.mul
+      , testProperty "abs"         $ unary abs Scientific.abs
+      , testProperty "negate"      $ unary negate Scientific.negate
+      , testProperty "signum"      $ unary signum Scientific.signum
       ]
 
-    , testProperty "0 identity of +" $ \a -> a `unsafeAddScientific` zeroScientific === a
-    , testProperty "1 identity of *" $ \a -> scientific 1 0 `mulScientific` a === a
-    , testProperty "0 identity of *" $ \a -> zeroScientific `mulScientific` a === zeroScientific
+    , testProperty "0 identity of +" $ \a -> a `Scientific.unsafeAdd` Scientific.zero === a
+    , testProperty "1 identity of *" $ \a -> scientific 1 0 `Scientific.mul` a === a
+    , testProperty "0 identity of *" $ \a -> Scientific.zero `Scientific.mul` a === Scientific.zero
 
-    , testProperty "associativity of `unsafeAddScientific`"         $ \a b c -> a `unsafeAddScientific` (b `unsafeAddScientific` c) === (a `unsafeAddScientific` b) `unsafeAddScientific` c
-    , testProperty "commutativity of `unsafeAddScientific`"         $ \a b   -> a `unsafeAddScientific` b       === b `unsafeAddScientific` a
-    , testProperty "distributivity of `mulScientific` over `unsafeAddScientific`" $ \a b c -> a `mulScientific` (b `unsafeAddScientific` c) === (a `mulScientific` b) `unsafeAddScientific` (a `mulScientific` c)
+    , testProperty "associativity of `Scientific.unsafeAdd`"         $ \a b c -> a `Scientific.unsafeAdd` (b `Scientific.unsafeAdd` c) === (a `Scientific.unsafeAdd` b) `Scientific.unsafeAdd` c
+    , testProperty "commutativity of `Scientific.unsafeAdd`"         $ \a b   -> a `Scientific.unsafeAdd` b       === b `Scientific.unsafeAdd` a
+    , testProperty "distributivity of `Scientific.mul` over `Scientific.unsafeAdd`" $ \a b c -> a `Scientific.mul` (b `Scientific.unsafeAdd` c) === (a `Scientific.mul` b) `Scientific.unsafeAdd` (a `Scientific.mul` c)
 
-    , testProperty "subtracting the addition" $ \x y -> (x `unsafeAddScientific` y) `unsafeSubScientific` y === x
+    , testProperty "subtracting the addition" $ \x y -> (x `Scientific.unsafeAdd` y) `Scientific.unsafeSub` y === x
 
-    , testProperty "+ and negate" $ \x -> x `unsafeAddScientific` negateScientific x === zeroScientific
-    , testProperty "- and negate" $ \x -> x `unsafeSubScientific` negateScientific x === x `unsafeAddScientific` x
+    , testProperty "+ and negate" $ \x -> x `Scientific.unsafeAdd` Scientific.negate x === Scientific.zero
+    , testProperty "- and negate" $ \x -> x `Scientific.unsafeSub` Scientific.negate x === x `Scientific.unsafeAdd` x
 
     , smallQuick "abs . negate == id"
-        (SC.over   nonNegativeScientificSeries $ \x -> absScientific (negateScientific x) === x)
-        (QC.forAll nonNegativeScientificGen    $ \x -> absScientific (negateScientific x) === x)
+        (SC.over   nonNegativeScientificSeries $ \x -> Scientific.abs (Scientific.negate x) === x)
+        (QC.forAll nonNegativeScientificGen    $ \x -> Scientific.abs (Scientific.negate x) === x)
     ]
 
   , testGroup "Real"
     [ testProperty "fromRational . toRational == id" $ \x ->
-        (unsafeFromRational . unsafeToRational) x === x
+        (Scientific.unsafeFromRational . Scientific.unsafeToRational) x === x
     ]
 
   , testGroup "RealFrac Replacements"
     [ testGroup "Equal to Rational"
       [ testProperty "properFraction" $ \x ->
-          let (n1::Integer, f1::Scientific) = unsafeProperFraction x
-              (n2::Integer, f2::Rational)   = properFraction (unsafeToRational x)
-          in (n1 == n2) && (f1 == unsafeFromRational f2)
+          let (n1::Integer, f1::Scientific) = Scientific.unsafeProperFraction x
+              (n2::Integer, f2::Rational)   = properFraction (Scientific.unsafeToRational x)
+          in (n1 == n2) && (f1 == Scientific.unsafeFromRational f2)
 
       , testProperty "unsafeRound" $ \(x::Scientific) ->
-          (unsafeRound x :: Integer) == round (unsafeToRational x)
+          (Scientific.unsafeRound x :: Integer) == round (Scientific.unsafeToRational x)
 
       , testProperty "unsafeTruncate" $ \(x::Scientific) ->
-          (unsafeTruncate x :: Integer) == truncate (unsafeToRational x)
+          (Scientific.unsafeTruncate x :: Integer) == truncate (Scientific.unsafeToRational x)
 
       , testProperty "unsafeCeiling" $ \(x::Scientific) ->
-          (unsafeCeiling x :: Integer) == ceiling (unsafeToRational x)
+          (Scientific.unsafeCeiling x :: Integer) == ceiling (Scientific.unsafeToRational x)
 
       , testProperty "unsafeFloor" $ \(x::Scientific) ->
-          (unsafeFloor x :: Integer) == floor (unsafeToRational x)
+          (Scientific.unsafeFloor x :: Integer) == floor (Scientific.unsafeToRational x)
       ]
 
     , testProperty "unsafeProperFraction_laws" properFraction_laws
 
-    , testProperty "unsafeRound"    $ \s -> unsafeRound    s == roundDefault    s
-    , testProperty "unsafeTruncate" $ \s -> unsafeTruncate s == truncateDefault s
-    , testProperty "unsafeCeiling"  $ \s -> unsafeCeiling  s == ceilingDefault  s
-    , testProperty "unsafeFloor"    $ \s -> unsafeFloor    s == floorDefault    s
+    , testProperty "unsafeRound"    $ \s -> Scientific.unsafeRound    s == roundDefault    s
+    , testProperty "unsafeTruncate" $ \s -> Scientific.unsafeTruncate s == truncateDefault s
+    , testProperty "unsafeCeiling"  $ \s -> Scientific.unsafeCeiling  s == ceilingDefault  s
+    , testProperty "unsafeFloor"    $ \s -> Scientific.unsafeFloor    s == floorDefault    s
     ]
 
   , testGroup "Conversions"
     [ testProperty "fromRationalRepetend" $ \(l, r) -> r ==
-        (case fromRationalRepetend (Just l) r of
-          Left (s, rr) -> unsafeToRational s + rr
+        (case Scientific.fromRationalRepetend (Just l) r of
+          Left (s, rr) -> Scientific.unsafeToRational s + rr
           Right (s, mbRepetend) ->
             case mbRepetend of
-              Nothing       -> unsafeToRational s
-              Just repetend -> unsafeToRationalRepetend s repetend)
+              Nothing       -> Scientific.unsafeToRational s
+              Just repetend -> Scientific.unsafeToRationalRepetend s repetend)
 
     , testGroup "Float"  $ conversionsProperties (undefined :: Float)
     , testGroup "Double" $ conversionsProperties (undefined :: Double)
 
     , testGroup "floatingOrInteger"
       [ testProperty "correct conversion" $ \s ->
-            case floatingOrInteger s :: Either Double Int of
-              Left  d -> d == toRealFloat s
-              Right i -> i == fromInteger (coefficient s) * 10^(base10Exponent s)
+            case Scientific.floatingOrInteger s :: Either Double Int of
+              Left  d -> d == Scientific.toRealFloat s
+              Right i -> i == fromInteger (Scientific.coefficient s) * 10^(Scientific.base10Exponent s)
       , testProperty "Integer == Right" $ \(i::Integer) ->
-          (floatingOrInteger (fromIntegerScientific i) :: Either Double Integer) == Right i
+          (Scientific.floatingOrInteger (Scientific.fromInteger i) :: Either Double Integer) == Right i
       , smallQuick "Double == Left"
           (\(d::Double) -> genericIsFloating d SC.==>
-             (floatingOrInteger (unsafeRealToScientific d) :: Either Double Integer) == Left d)
+             (Scientific.floatingOrInteger (Scientific.unsafeRealToScientific d) :: Either Double Integer) == Left d)
           (\(d::Double) -> genericIsFloating d QC.==>
-             (floatingOrInteger (unsafeRealToScientific d) :: Either Double Integer) == Left d)
+             (Scientific.floatingOrInteger (Scientific.unsafeRealToScientific d) :: Either Double Integer) == Left d)
       ]
     , testGroup "toBoundedInteger"
       [ testGroup "correct conversion"
@@ -254,25 +255,25 @@ main = testMain $ testGroup "scientific"
     ]
   , testGroup "toBoundedRealFloat"
     [ testCase "0 * 10^1000 == 0" $
-        toBoundedRealFloat (scientific 0 1000) @?= Right (0 :: Float)
+        Scientific.toBoundedRealFloat (scientific 0 1000) @?= Right (0 :: Float)
     ]
   , testGroup "toBoundedInteger"
     [ testGroup "to Int64" $
       [ testCase "succ of maxBound" $
         let i = succ . fromIntegral $ (maxBound :: Int64)
             s = scientific i 0
-        in (toBoundedInteger s :: Maybe Int64) @?= Nothing
+        in (Scientific.toBoundedInteger s :: Maybe Int64) @?= Nothing
       , testCase "pred of minBound" $
         let i = pred . fromIntegral $ (minBound :: Int64)
             s = scientific i 0
-        in (toBoundedInteger s :: Maybe Int64) @?= Nothing
+        in (Scientific.toBoundedInteger s :: Maybe Int64) @?= Nothing
       , testCase "0 * 10^1000 == 0" $
-          toBoundedInteger (scientific 0 1000) @?= Just (0 :: Int64)
+          Scientific.toBoundedInteger (scientific 0 1000) @?= Just (0 :: Int64)
       ]
     ]
   , testGroup "Predicates"
-    [ testProperty "isFloating" $ \s -> isFloating s ==      genericScientificIsFloating s
-    , testProperty "isInteger"  $ \s -> isInteger  s == not (genericScientificIsFloating s)
+    [ testProperty "isFloating" $ \s -> Scientific.isFloating s ==      genericScientificIsFloating s
+    , testProperty "isInteger"  $ \s -> Scientific.isInteger  s == not (genericScientificIsFloating s)
     ]
   ]
 
@@ -292,7 +293,7 @@ genericIsFloating :: RealFrac a => a -> Bool
 genericIsFloating a = fromInteger (floor a :: Integer) /= a
 
 genericScientificIsFloating :: Scientific -> Bool
-genericScientificIsFloating s = fromIntegerScientific (unsafeFloor s :: Integer) /= s
+genericScientificIsFloating s = Scientific.fromInteger (Scientific.unsafeFloor s :: Integer) /= s
 
 toDecimalDigits_eq_floatToDigits :: Double -> Bool
 toDecimalDigits_eq_floatToDigits d =
@@ -315,12 +316,12 @@ conversionsProperties _ =
     --   Scientific.fromFloatDigits (realToFrac s :: realFloat) == s
 
     testProperty "toRealFloat" $ \(d :: realFloat) ->
-      (Scientific.toRealFloat . unsafeRealToScientific) d == d
+      (Scientific.toRealFloat . Scientific.unsafeRealToScientific) d == d
 
   , testProperty "toRealFloat . fromFloatDigits == id" $ \(d :: realFloat) ->
       (Scientific.toRealFloat . Scientific.fromFloatDigits) d == d
 
-  -- , testProperty "fromFloatDigits . toRealFloat == id" $ \(s :: Scientific) ->
+  -- , testProperty "fromFloatDigits . Scientific.toRealFloat == id" $ \(s :: Scientific) ->
   --     Scientific.fromFloatDigits (Scientific.toRealFloat s :: realFloat) == s
   ]
 
@@ -328,13 +329,13 @@ toBoundedIntegerConversion
     :: forall i. (Integral i, Bounded i)
     => i -> Scientific -> Bool
 toBoundedIntegerConversion _ s =
-    case toBoundedInteger s :: Maybe i of
-      Just i -> i == (fromIntegral $ (coefficient s) * 10^(base10Exponent s)) &&
+    case Scientific.toBoundedInteger s :: Maybe i of
+      Just i -> i == (fromIntegral $ (Scientific.coefficient s) * 10^(Scientific.base10Exponent s)) &&
                 i >= minBound &&
                 i <= maxBound
-      Nothing -> isFloating s ||
-                 s < fromIntegralScientific (minBound :: i) ||
-                 s > fromIntegralScientific (maxBound :: i)
+      Nothing -> Scientific.isFloating s ||
+                 s < Scientific.fromIntegral (minBound :: i) ||
+                 s > Scientific.fromIntegral (maxBound :: i)
 
 testProperty :: (SC.Testable IO test, QC.Testable test)
              => TestName -> test -> TestTree
@@ -354,10 +355,10 @@ smallQuick n sc qc = testGroup n
 infix 4 ===
 
 bin :: (forall a. Num a => a -> a -> a) -> (Scientific -> Scientific -> Scientific) -> Scientific -> Scientific -> Bool
-bin opN opS a b = unsafeToRational (a `opS` b) == unsafeToRational a `opN` unsafeToRational b
+bin opN opS a b = Scientific.unsafeToRational (a `opS` b) == Scientific.unsafeToRational a `opN` Scientific.unsafeToRational b
 
 unary :: (forall a. Num a => a -> a) -> (Scientific -> Scientific) -> Scientific -> Bool
-unary opN opS a = unsafeToRational (opS a) == opN (unsafeToRational a)
+unary opN opS a = Scientific.unsafeToRational (opS a) == opN (Scientific.unsafeToRational a)
 
 toDecimalDigits_laws :: Scientific -> Bool
 toDecimalDigits_laws x =
@@ -366,7 +367,7 @@ toDecimalDigits_laws x =
       rule1 = n >= 1
       n     = length ds
 
-      rule2 = unsafeToRational x == coeff * 10 ^^ e
+      rule2 = Scientific.unsafeToRational x == coeff * 10 ^^ e
       coeff = foldr (\di a -> a / 10 + fromIntegral di) 0 (0:ds)
 
       rule3 = all (\di -> 0 <= di && di <= 9) ds
@@ -377,39 +378,39 @@ toDecimalDigits_laws x =
   in rule1 && rule2 && rule3 && rule4
 
 properFraction_laws :: Scientific -> Bool
-properFraction_laws x = fromIntegerScientific n `unsafeAddScientific` f === x &&
+properFraction_laws x = Scientific.fromInteger n `Scientific.unsafeAdd` f === x &&
                         (positive n           == posX || n == 0) &&
-                        (positiveScientific f == posX || f == zeroScientific) &&
-                        absScientific f < scientific 1 0
+                        (positiveScientific f == posX || f == Scientific.zero) &&
+                        Scientific.abs f < scientific 1 0
     where
       posX = positiveScientific x
 
-      (n, f) = unsafeProperFraction x :: (Integer, Scientific)
+      (n, f) = Scientific.unsafeProperFraction x :: (Integer, Scientific)
 
 positive :: (Ord a, Num a) => a -> Bool
 positive y = y >= 0
 
 positiveScientific :: Scientific -> Bool
-positiveScientific s = s >= zeroScientific
+positiveScientific s = s >= Scientific.zero
 
 floorDefault :: Scientific -> Integer
-floorDefault x = if r < zeroScientific then n - 1 else n
-                 where (n,r) = unsafeProperFraction x
+floorDefault x = if r < Scientific.zero then n - 1 else n
+                 where (n,r) = Scientific.unsafeProperFraction x
 
 ceilingDefault :: Scientific -> Integer
-ceilingDefault x = if r > zeroScientific then n + 1 else n
-                   where (n,r) = unsafeProperFraction x
+ceilingDefault x = if r > Scientific.zero then n + 1 else n
+                   where (n,r) = Scientific.unsafeProperFraction x
 
 truncateDefault :: Scientific -> Integer
-truncateDefault x =  m where (m,_) = unsafeProperFraction x
+truncateDefault x =  m where (m,_) = Scientific.unsafeProperFraction x
 
 roundDefault :: Scientific -> Integer
-roundDefault x = let (n,r) = unsafeProperFraction x
-                     m     = if r < zeroScientific then n - 1 else n + 1
-                     sig   = signumScientific (absScientific r `unsafeSubScientific` scientific 5 (-1))
+roundDefault x = let (n,r) = Scientific.unsafeProperFraction x
+                     m     = if r < Scientific.zero then n - 1 else n + 1
+                     sig   = Scientific.signum (Scientific.abs r `Scientific.unsafeSub` scientific 5 (-1))
                  in  if
                    | sig == scientific (-1) 0 -> n
-                   | sig == zeroScientific    -> if even n then n else m
+                   | sig == Scientific.zero    -> if even n then n else m
                    | sig == scientific   1  0 -> m
                    | otherwise                -> error "round default defn: Bad value"
 
@@ -431,7 +432,7 @@ scientifics :: (Monad m) => SC.Series m Scientific
 scientifics = SC.cons2 scientific
 
 nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
-nonNegativeScientificSeries = liftM absScientific SC.series
+nonNegativeScientificSeries = liftM Scientific.abs SC.series
 
 
 ----------------------------------------------------------------------
